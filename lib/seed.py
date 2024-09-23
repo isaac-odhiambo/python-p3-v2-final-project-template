@@ -83,30 +83,35 @@ def initialize_database():
         department_id=management.id
     )
 
-    # Create Orders
+    # Create Orders (removed staff_id)
     order_1 = Order.create(
         room_id=room_1.id, 
-        staff_id=staff_3.id, 
+        quantity=2,  # Set a default quantity
+        total_price=200.0,  # Set a default total price
         guest_name="Alicia "
     )
     order_2 = Order.create(
         room_id=room_2.id, 
-        staff_id=staff_3.id, 
+        quantity=1,
+        total_price=150.0,
         guest_name="Jane Atsa"
     )
     order_3 = Order.create(
         room_id=room_3.id, 
-        staff_id=staff_2.id, 
+        quantity=3,
+        total_price=750.0,
         guest_name="Wicklife Omondi"
     )
     order_4 = Order.create(
         room_id=room_4.id, 
-        staff_id=staff_4.id, 
+        quantity=2,
+        total_price=1000.0,
         guest_name="Cecile Mwangi"
     )
     order_5 = Order.create(
         room_id=room_5.id, 
-        staff_id=staff_5.id, 
+        quantity=5,
+        total_price=1500.0,
         guest_name="Goddfrey Atsa"
     )
 

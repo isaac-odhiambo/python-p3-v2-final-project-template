@@ -3,145 +3,88 @@ from models.__init__ import CURSOR, CONN
 class Order:
     all = {}
 
-    def __init__(self, room_id, staff_id, guest_name, id=None):
+    def __init__(self, room_id, quantity, guest_name, total_price=None, id=None):
         self.id = id
         self.room_id = room_id
-        self.staff_id = staff_id
+        self.quantity = quantity
         self.guest_name = guest_name
+        self.total_price = total_price
 
     def __repr__(self):
-        return (f"<Order {self.id}: Room ID: {self.room_id}, " +
-                f"Staff ID: {self.staff_id}, Guest: {self.guest_name}>")
-
-    @property
-    def room_id(self):
-        return self._room_id
-
-    @room_id.setter
-    def room_id(self, room_id):
-        if isinstance(room_id, int):
-            # Import inside method to avoid circular dependency
-            from models.room import Room
-            if Room.find_by_id(room_id):
-                self._room_id = room_id
-            else:
-                raise ValueError("room_id must reference a valid room in the database")
-        else:
-            raise ValueError("room_id must be an integer")
-
-    @property
-    def staff_id(self):
-        return self._staff_id
-
-    @staff_id.setter
-    def staff_id(self, staff_id):
-        if isinstance(staff_id, int):
-            # Import inside method to avoid circular dependency
-            from models.staff import Staff
-            if Staff.find_by_id(staff_id):
-                self._staff_id = staff_id
-            else:
-                raise ValueError("staff_id must reference a valid staff in the database")
-        else:
-            raise ValueError("staff_id must be an integer")
+        return (f"<Order {self.id}: Room {self.room_id}, " +
+                f"Quantity {self.quantity}, Guest {self.guest_name}>")
 
     @classmethod
     def create_table(cls):
-        sql = """
+        """ Create the orders table """
+        CURSOR.execute("""
             CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY,
-            room_id INTEGER,
-            staff_id INTEGER,
-            guest_name TEXT,
-            FOREIGN KEY (room_id) REFERENCES rooms(id),
-            FOREIGN KEY (staff_id) REFERENCES staff(id))
-        """
-        CURSOR.execute(sql)
+                id INTEGER PRIMARY KEY,
+                room_id INTEGER,
+                quantity INTEGER,
+                guest_name TEXT,
+                total_price REAL,
+                FOREIGN KEY (room_id) REFERENCES rooms(id)
+            )
+        """)
         CONN.commit()
 
     @classmethod
     def drop_table(cls):
-        sql = """
-            DROP TABLE IF EXISTS orders;
-        """
-        CURSOR.execute(sql)
+        """ Drop the orders table """
+        CURSOR.execute("DROP TABLE IF EXISTS orders")
         CONN.commit()
 
     def save(self):
-        sql = """
-            INSERT INTO orders (room_id, staff_id, guest_name)
-            VALUES (?, ?, ?)
-        """
-        CURSOR.execute(sql, (self.room_id, self.staff_id, self.guest_name))
+        """ Insert or update order in the database """
+        if self.id is None:
+            CURSOR.execute("""
+                INSERT INTO orders (room_id, quantity, guest_name, total_price)
+                VALUES (?, ?, ?, ?)
+            """, (self.room_id, self.quantity, self.guest_name, self.total_price))
+            self.id = CURSOR.lastrowid
+        else:
+            CURSOR.execute("""
+                UPDATE orders
+                SET room_id = ?, quantity = ?, guest_name = ?, total_price = ?
+                WHERE id = ?
+            """, (self.room_id, self.quantity, self.guest_name, self.total_price, self.id))
         CONN.commit()
-
-        self.id = CURSOR.lastrowid
-        type(self).all[self.id] = self
-
+    
     def update(self):
-        sql = """
-            UPDATE orders
-            SET room_id = ?, staff_id = ?, guest_name = ?
-            WHERE id = ?
-        """
-        CURSOR.execute(sql, (self.room_id, self.staff_id, self.guest_name, self.id))
-        CONN.commit()
+        """ Update the order in the database """
+        if self.id is not None:  # Ensure the order has an ID before updating
+            CURSOR.execute("""
+                UPDATE orders
+                SET room_id = ?, quantity = ?, guest_name = ?, total_price = ?
+                WHERE id = ?
+            """, (self.room_id, self.quantity, self.guest_name, self.total_price, self.id))
+            CONN.commit()
+    
 
-    def delete(self):
-        sql = """
-            DELETE FROM orders
-            WHERE id = ?
-        """
-        CURSOR.execute(sql, (self.id,))
-        CONN.commit()
-
-        del type(self).all[self.id]
-        self.id = None
 
     @classmethod
-    def create(cls, room_id, staff_id, guest_name):
-        order = cls(room_id, staff_id, guest_name)
+    def find_by_id(cls, id):
+        """ Find an order by its ID """
+        row = CURSOR.execute("SELECT * FROM orders WHERE id = ?", (id,)).fetchone()
+        if row:
+            return cls(row[1], row[2], row[3], row[4], row[0])  # Adjusted to unpack row correctly
+        return None
+
+    @classmethod
+    def create(cls, room_id, quantity, guest_name, total_price):
+        """ Create a new order and save it to the database """
+        order = cls(room_id, quantity, guest_name, total_price)
         order.save()
         return order
 
     @classmethod
-    def instance_from_db(cls, row):
-        order = cls.all.get(row[0])
-        if order:
-            order.room_id = row[1]
-            order.staff_id = row[2]
-            order.guest_name = row[3]
-        else:
-            order = cls(row[1], row[2], row[3])
-            order.id = row[0]
-            cls.all[order.id] = order
-        return order
-
-    @classmethod
     def get_all(cls):
-        sql = """
-            SELECT *
-            FROM orders
-        """
-        rows = CURSOR.execute(sql).fetchall()
-        return [cls.instance_from_db(row) for row in rows]
+        """ Get all orders from the database """
+        rows = CURSOR.execute("SELECT * FROM orders").fetchall()
+        return [cls(row[1], row[2], row[3], row[4], row[0]) for row in rows]  # Adjusted to unpack row correctly
 
-    @classmethod
-    def find_by_id(cls, id):
-        sql = """
-            SELECT *
-            FROM orders
-            WHERE id = ?
-        """
-        row = CURSOR.execute(sql, (id,)).fetchone()
-        return cls.instance_from_db(row) if row else None
-
-    @classmethod
-    def find_by_guest_name(cls, guest_name):
-        sql = """
-            SELECT *
-            FROM orders
-            WHERE guest_name = ?
-        """
-        row = CURSOR.execute(sql, (guest_name,)).fetchone()
-        return cls.instance_from_db(row) if row else None
+    def delete(self):
+        """ Delete the order from the database """
+        CURSOR.execute("DELETE FROM orders WHERE id = ?", (self.id,))
+        CONN.commit()

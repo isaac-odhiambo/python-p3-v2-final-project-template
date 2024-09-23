@@ -42,7 +42,7 @@ class Room:
         CONN.commit()
 
         self.id = CURSOR.lastrowid
-        type(self).all[self.id] = self
+        self.__class__.all[self.id] = self
 
     def update(self):
         sql = """
@@ -61,8 +61,15 @@ class Room:
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
 
-        del type(self).all[self.id]
+        del self.__class__.all[self.id]
         self.id = None
+
+    @classmethod
+    def find_by_number(cls, room_number):
+        """Find a room by its number"""
+        sql = "SELECT * FROM rooms WHERE room_number = ?"
+        row = CURSOR.execute(sql, (room_number,)).fetchone()
+        return cls.instance_from_db(row) if row else None
 
     @classmethod
     def create(cls, room_number, room_type, price):

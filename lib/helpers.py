@@ -27,8 +27,9 @@ def find_department_by_id():
 
 def create_department():
     name = input("Enter the department's name: ")
+    location = input("Enter the department's location: ")
     try:
-        department = Department.create(name)
+        department = Department.create(name, location)
         print(f'Success: {department}')
     except Exception as exc:
         print("Error creating department: ", exc)
@@ -39,7 +40,9 @@ def update_department():
     if department:
         try:
             name = input("Enter the department's new name: ")
+            location = input("Enter the department's new location: ")
             department.name = name
+            department.location = location
             department.update()
             print(f'Success: {department}')
         except Exception as exc:
@@ -63,9 +66,16 @@ def list_staff():
         print(staff)
 
 def find_staff_by_name():
-    name = input("Enter the staff member's name: ")
-    staff = Staff.find_by_name(name)
-    print(staff) if staff else print(f'Staff member {name} not found')
+    name = input("Enter the staff member's name: ").strip().lower()
+    staff_members = Staff.get_all()
+    matching_staff = [staff for staff in staff_members if staff.name.lower() == name]
+    
+    if matching_staff:
+        print(f"Found {len(matching_staff)} staff member(s) with the name '{name}':")
+        for staff in matching_staff:
+            print(staff)
+    else:
+        print(f"No staff member found with the name '{name}'")
 
 def find_staff_by_id():
     id_ = input("Enter the staff member's id: ")
@@ -75,12 +85,14 @@ def find_staff_by_id():
 def create_staff():
     name = input("Enter the staff member's name: ")
     job_title = input("Enter the staff member's job title: ")
-    department_id = input("Enter the staff member's department id: ")
     try:
+        department_id = int(input("Enter the staff member's department id: "))
         staff = Staff.create(name, job_title, department_id)
         print(f'Success: {staff}')
+    except ValueError:
+        print("Error: department_id must be an integer.")
     except Exception as exc:
-        print("Error creating staff member: ", exc)
+        print(f"Error creating staff member: {exc}")
 
 def update_staff():
     id_ = input("Enter the staff member's id: ")
@@ -91,12 +103,14 @@ def update_staff():
             staff.name = name
             job_title = input("Enter the staff member's new job title: ")
             staff.job_title = job_title
-            department_id = input("Enter the staff member's new department id: ")
+            department_id = int(input("Enter the staff member's new department id: "))
             staff.department_id = department_id
             staff.update()
             print(f'Success: {staff}')
+        except ValueError:
+            print("Error: department_id must be an integer.")
         except Exception as exc:
-            print("Error updating staff member: ", exc)
+            print(f"Error updating staff member: {exc}")
     else:
         print(f'Staff member {id_} not found')
 
@@ -110,8 +124,9 @@ def delete_staff():
         print(f'Staff member {id_} not found')
 
 def list_staff_in_department():
-    department_id = input("Enter the department's id: ")
+    department_id = int(input("Enter the department's id: "))
     staff_members = Staff.find_by_department_id(department_id)
+    
     if staff_members:
         for staff in staff_members:
             print(staff)
@@ -237,15 +252,17 @@ def find_order_by_id():
 
 def create_order():
     room_number = input("Enter the room number: ")
-    item = input("Enter the item: ")
+    guest_name = input("Enter the guest's name: ")  # Prompt for guest name
     quantity = int(input("Enter the quantity: "))
     total_price = float(input("Enter the total price: "))
-    staff_id = input("Enter the staff member's id: ")
-    department_id = input("Enter the department's id: ")
+    
     try:
         room = Room.find_by_number(room_number)
-        order = Order.create(room_id=room.id, item=item, quantity=quantity, total_price=total_price, staff_id=staff_id, department_id=department_id)
-        print(f'Success: {order}')
+        if room:
+            order = Order.create(room_id=room.id, quantity=quantity, guest_name=guest_name, total_price=total_price)
+            print(f'Success: {order}')
+        else:
+            print(f'Room {room_number} not found.')
     except Exception as exc:
         print("Error creating order: ", exc)
 
@@ -256,20 +273,15 @@ def update_order():
         try:
             room_number = input("Enter the new room number: ")
             room = Room.find_by_number(room_number)
-            item = input("Enter the new item: ")
-            quantity = int(input("Enter the new quantity: "))
-            total_price = float(input("Enter the new total price: "))
-            staff_id = input("Enter the new staff member's id: ")
-            department_id = input("Enter the new department's id: ")
-
-            order.room_id = room.id
-            order.item = item
-            order.quantity = quantity
-            order.total_price = total_price
-            order.staff_id = staff_id
-            order.department_id = department_id
-            order.update()
-            print(f'Success: {order}')
+            if room:
+                order.room_id = room.id
+                order.quantity = int(input("Enter the new quantity: "))
+                order.guest_name = input("Enter the new guest name: ")  # Prompt for new guest name
+                order.total_price = float(input("Enter the new total price: "))
+                order.update()
+                print(f'Success: {order}')
+            else:
+                print(f'Room {room_number} not found.')
         except Exception as exc:
             print("Error updating order: ", exc)
     else:

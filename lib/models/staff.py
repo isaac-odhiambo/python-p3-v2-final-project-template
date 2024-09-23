@@ -44,7 +44,6 @@ class Staff:
     @department_id.setter
     def department_id(self, department_id):
         if isinstance(department_id, int):
-            # Import inside method to avoid circular dependency
             from models.department import Department
             if Department.find_by_id(department_id):
                 self._department_id = department_id
@@ -81,9 +80,8 @@ class Staff:
         """
         CURSOR.execute(sql, (self.name, self.job_title, self.department_id))
         CONN.commit()
-
         self.id = CURSOR.lastrowid
-        type(self).all[self.id] = self
+        self.__class__.all[self.id] = self
 
     def update(self):
         sql = """
@@ -101,8 +99,7 @@ class Staff:
         """
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
-
-        del type(self).all[self.id]
+        del self.__class__.all[self.id]
         self.id = None
 
     @classmethod
@@ -152,3 +149,10 @@ class Staff:
         """
         row = CURSOR.execute(sql, (name,)).fetchone()
         return cls.instance_from_db(row) if row else None
+    
+    @classmethod
+    def find_by_department_id(cls, department_id):
+        """Find staff members by department_id"""
+        sql = "SELECT * FROM staff WHERE department_id = ?"
+        rows = CURSOR.execute(sql, (department_id,)).fetchall()
+        return [cls.instance_from_db(row) for row in rows]
